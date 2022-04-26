@@ -1,6 +1,3 @@
-//go:build !server
-// +build !server
-
 package main
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
@@ -24,42 +21,48 @@ package main
 // THE SOFTWARE.
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"text/template"
 
-	"github.com/urfave/cli"
-
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
+	"github.com/Masterminds/sprig/v3"
 )
 
 func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
-		},
+	templateFile := os.Args[1]
+	src := os.Args[2]
+	output := os.Args[3]
 
-		Action: cmd.Main(),
-	}
-
-	err := app.Run(os.Args)
+	b, err := ioutil.ReadFile(templateFile)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
+	b2, err := ioutil.ReadFile(src)
+	if err != nil {
+		panic(err)
+	}
+
+	templated, err := TemplatedString(fmt.Sprintf("%s\n%s", string(b), string(b2)), nil)
+	if err != nil {
+		panic(err)
+	}
+
+	err = ioutil.WriteFile(output, []byte(templated), os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func TemplatedString(t string, i interface{}) (string, error) {
+	b := bytes.NewBuffer([]byte{})
+	tmpl, err := template.New("template").Funcs(sprig.TxtFuncMap()).Parse(t)
+	if err != nil {
+		return "", err
+	}
+
+	err = tmpl.Execute(b, i)
+
+	return b.String(), err
 }

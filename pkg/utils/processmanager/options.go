@@ -1,7 +1,4 @@
-//go:build !server
-// +build !server
-
-package main
+package process
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -24,42 +21,50 @@ package main
 // THE SOFTWARE.
 
 import (
-	"fmt"
+	"io/ioutil"
 	"os"
-
-	"github.com/urfave/cli"
-
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
 )
 
-func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
-		},
-
-		Action: cmd.Main(),
+// WithKillSignal sets the given signal while attemping to stop. Defaults to "9"
+func WithKillSignal(s string) func(cfg *Config) error {
+	return func(cfg *Config) error {
+		cfg.KillSignal = s
+		return nil
 	}
+}
 
-	err := app.Run(os.Args)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+func WithEnvironment(s ...string) Option {
+	return func(cfg *Config) error {
+		cfg.Environment = s
+		return nil
+	}
+}
+
+func WithTemporaryStateDir() func(cfg *Config) error {
+	return func(cfg *Config) error {
+		dir, err := ioutil.TempDir(os.TempDir(), "processmanager")
+		cfg.StateDir = dir
+		return err
+	}
+}
+
+func WithStateDir(s string) func(cfg *Config) error {
+	return func(cfg *Config) error {
+		cfg.StateDir = s
+		return nil
+	}
+}
+
+func WithName(s string) func(cfg *Config) error {
+	return func(cfg *Config) error {
+		cfg.Name = s
+		return nil
+	}
+}
+
+func WithArgs(s ...string) func(cfg *Config) error {
+	return func(cfg *Config) error {
+		cfg.Args = append(cfg.Args, s...)
+		return nil
 	}
 }

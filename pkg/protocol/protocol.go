@@ -1,7 +1,4 @@
-//go:build !server
-// +build !server
-
-package main
+package protocol
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -24,42 +21,30 @@ package main
 // THE SOFTWARE.
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/urfave/cli"
-
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
+	p2pprotocol "github.com/libp2p/go-libp2p-core/protocol"
 )
 
-func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
-		},
+const (
+	BhojpurVPN      Protocol = "/vpn/0.1"
+	ServiceProtocol Protocol = "/vpn/service/0.1"
+	FileProtocol    Protocol = "/vpn/file/0.1"
+	EgressProtocol  Protocol = "/vpn/egress/0.1"
+)
 
-		Action: cmd.Main(),
-	}
+const (
+	FilesLedgerKey    = "files"
+	MachinesLedgerKey = "machines"
+	ServicesLedgerKey = "services"
+	UsersLedgerKey    = "users"
+	HealthCheckKey    = "healthcheck"
+	DNSKey            = "dns"
+	EgressService     = "egress"
+	TrustZoneKey      = "trustzone"
+	TrustZoneAuthKey  = "trustzoneAuth"
+)
 
-	err := app.Run(os.Args)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+type Protocol string
+
+func (p Protocol) ID() p2pprotocol.ID {
+	return p2pprotocol.ID(string(p))
 }

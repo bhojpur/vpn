@@ -1,0 +1,52 @@
+before:
+  hooks:
+    - go mod tidy
+dist: release
+source:
+  enabled: true
+  name_template: '{{ .ProjectName }}-{{ .Tag }}-source'
+checksum:
+  name_template: '{{ .ProjectName }}-{{ .Tag }}-checksums.txt'
+builds:
+  - id: vpnsvr
+    env:
+      - CGO_ENABLED=0
+    main: server.go
+    binary: vpnsvr
+    ldflags:
+      - -s -w
+      - -X github.com/bhojpur/vpn/pkg/version.Version={{.Version}}-{{.ShortCommit}}
+      - -X "github.com/bhojpur/vpn/pkg/version.BuildTime={{ time "2006-01-02 15:04:05 MST" }}"
+      - -X "github.com/bhojpur/vpn/pkg/version.BuildCommit={{ .FullCommit }}"
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - 386
+archives:
+  - id: vpnsvr
+    files:
+    - "none*"
+    format: binary # this removes the tar of the archives, leaving the binaries alone
+    name_template: vpnsvr-{{ .Tag }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    builds:
+    - vpnsvr
+    replacements:
+      darwin: Darwin
+      linux: Linux
+      386: i386
+      amd64: x86_64
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^Merge pull request'
+release:
+  prerelease: auto
+  header: |
+    Bhojpur VPN is a fully decentralized, immutable, portable, and easy to use statically compiled
+    virtual private networking and a reverse proxy over P2P.

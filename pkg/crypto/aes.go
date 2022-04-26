@@ -1,7 +1,4 @@
-//go:build !server
-// +build !server
-
-package main
+package crypto
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -24,42 +21,63 @@ package main
 // THE SOFTWARE.
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
-	"os"
-
-	"github.com/urfave/cli"
-
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
+	"io"
 )
 
-func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
-		},
-
-		Action: cmd.Main(),
-	}
-
-	err := app.Run(os.Args)
+func AESEncrypt(plaintext string, key *[32]byte) (ciphertext string, err error) {
+	block, err := aes.NewCipher(key[:])
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return "", err
 	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	_, err = io.ReadFull(rand.Reader, nonce)
+	if err != nil {
+		return "", err
+	}
+
+	cypher := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+
+	cyp := fmt.Sprintf("%x", cypher)
+	return cyp, nil
+}
+
+func AESDecrypt(text string, key *[32]byte) (plaintext string, err error) {
+	ciphertext, _ := hex.DecodeString(text)
+
+	block, err := aes.NewCipher(key[:])
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	if len(ciphertext) < gcm.NonceSize() {
+		return "", errors.New("malformed ciphertext")
+	}
+
+	decodedtext, err := gcm.Open(nil,
+		ciphertext[:gcm.NonceSize()],
+		ciphertext[gcm.NonceSize():],
+		nil,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return string(decodedtext), err
 }

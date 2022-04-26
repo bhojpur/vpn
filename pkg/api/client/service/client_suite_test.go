@@ -1,7 +1,4 @@
-//go:build !server
-// +build !server
-
-package main
+package service_test
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -26,40 +23,32 @@ package main
 import (
 	"fmt"
 	"os"
+	"testing"
+	"time"
 
-	"github.com/urfave/cli"
+	. "github.com/bhojpur/vpn/pkg/api/client"
 
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
-		},
+var testInstance = os.Getenv("TEST_INSTANCE")
 
-		Action: cmd.Main(),
-	}
-
-	err := app.Run(os.Args)
-	if err != nil {
-		fmt.Println(err)
+func TestService(t *testing.T) {
+	if testInstance == "" {
+		fmt.Println("a testing instance has to be defined with TEST_INSTANCE")
 		os.Exit(1)
 	}
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Service Suite")
 }
+
+var _ = BeforeSuite(func() {
+	// Start the test suite only if we have some machines connected
+
+	Eventually(func() (int, error) {
+		c := NewClient(WithHost(testInstance))
+		m, err := c.Machines()
+		return len(m), err
+	}, 100*time.Second, 1*time.Second).Should(BeNumerically(">=", 0))
+})

@@ -1,0 +1,121 @@
+version: "3"
+
+vars:
+  GREETING: Hello, Bhojpur VPN Developer!
+
+tasks:
+    default:
+        cmds:
+        - echo "{{.GREETING}}"
+        silent: true
+
+    build-tools:
+        desc: Build runtime engine software for Bhojpur VPN realization
+        cmds:
+        - GOFLAGS=-mod=mod go build -o bin/vpnsvr ./server.go 
+        - chmod 755 bin/vpnsvr
+        - cp bin/vpnsvr $GOPATH/bin
+
+    build-web-samples:
+        desc: Build the web application using wasm
+        cmds:
+        - cd internal; guiutl package -name "Bhojpur VPN" -os wasm -icon Icon.png
+        - cd internal/wasm; gui web
+
+    build-web-wasm:
+        desc: Build the web application using wasm
+        cmds:
+        - cd pkg/webui/wasm; guiutl package -name "Bhojpur VPN" -os wasm -icon ../../../internal/Icon.png
+        - cd pkg/webui/wasm; gui web
+
+    build-web-gopherjs:
+        desc: Build the web application using gopherjs
+        cmds:
+        - cd pkg/webui/bhojpur; guiutl package -name "Bhojpur VPN" -os gopherjs -icon ../../../internal/Icon.png
+        - cd pkg/webui/bhojpur; gui web
+
+    build-darwin:
+        desc: Build the desktop application for current OS
+        cmds:
+        - guiutl package -name "Bhojpur VPN" -os darwin -sourceDir internal -icon internal/Icon.png
+        - cp -R "Bhojpur VPN.app" ~/Applications
+
+    build-linux:
+        desc: Build the desktop application for current OS
+        cmds:
+        - guiutl package -name "Bhojpur VPN" -os linux -sourceDir internal -icon internal/Icon.png
+
+    build-windows:
+        desc: Build the desktop application for current OS
+        cmds:
+        - guiutl package -name "Bhojpur VPN" -os windows -sourceDir internal -icon internal/Icon.png
+
+    package-android:
+        desc: Package the mobile application for Android
+        cmds:
+        - guiutl package -name "Bhojpur VPN" -os android -appID net.bhojpur.vpn -icon internal/Icon.png
+
+    package-ios:
+        desc: Package the mobile application for iOS
+        cmds:
+        - guiutl package -name "Bhojpur VPN" -os ios -appID net.bhojpur.vpn -icon internal/Icon.png
+
+    release-macos:
+        desc: Release the native application for macOS App Store
+        cmds:
+        - guiutl release -appID net.bhojpur.vpn -appVersion 1.0 -appBuild 1 -category business
+
+    release-android:
+        desc: Release the mobile application for Google Play
+        cmds:
+        - guiutl release -os android -appID net.bhojpur.vpn -appVersion 1.0 -appBuild 1
+
+    release-ios:
+        desc: Release the mobile application for iOS App Store
+        cmds:
+        - guiutl release -os ios -appID net.bhojpur.vpn -appVersion 1.0 -appBuild 1
+
+    run-web-server:
+        desc: Run the web server application from source code
+        cmds:
+        - GOFLAGS=-mod=mod go run server.go
+ 
+    run-web-client:
+        desc: Run the web client application from source code
+        cmds:
+        - GOFLAGS=-mod=mod go run client.go
+
+    run-mobile:
+        desc: Run the mobile client application on emulator
+        cmds:
+        - GOFLAGS=-mod=mod go run -tags mobile native/main.go
+
+    run-desktop: 
+        desc: Run the desktop application on local host
+        cmds:
+        - GOFLAGS=-mod=mod go run native/main.go
+
+    generate:
+        desc: Generate Go source code
+        cmds:
+        - GOFLAGS=-mod=mod go generate ./...
+
+    test:
+        desc: Execute all the Unit Tests
+        cmds:
+        - gotestsum --junitfile test-results/unit-tests.xml -- -short -race -cover -coverprofile test-results/cover.out ./...
+
+    swagger.gen:
+        desc: Generate Go code
+        cmds:
+        - GOFLAGS=-mod=mod go generate bhojpur.net/vpn/internal bhojpur.net/vpn/pkg/swagger
+
+    swagger.validate:
+        desc: Validate all the Swagger API specifications
+        cmds:
+        - swagger validate pkg/swagger/swagger.yml
+
+    swagger.doc:
+        desc: Generate documentation for Swagger specified APIs
+        cmds:
+        - docker run -i yousan/swagger-yaml-to-html < pkg/swagger/swagger.yml > doc/index.html

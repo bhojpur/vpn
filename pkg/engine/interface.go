@@ -1,7 +1,7 @@
-//go:build !server
-// +build !server
+//go:build !windows
+// +build !windows
 
-package main
+package engine
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -24,42 +24,43 @@ package main
 // THE SOFTWARE.
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/urfave/cli"
-
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
+	"github.com/songgao/water"
+	"github.com/vishvananda/netlink"
 )
 
-func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
-		},
-
-		Action: cmd.Main(),
+func createInterface(c *Config) (*water.Interface, error) {
+	config := water.Config{
+		DeviceType:             c.DeviceType,
+		PlatformSpecificParams: water.PlatformSpecificParams{Persist: !c.NetLinkBootstrap},
 	}
+	config.Name = c.InterfaceName
 
-	err := app.Run(os.Args)
+	return water.New(config)
+}
+
+func prepareInterface(c *Config) error {
+	link, err := netlink.LinkByName(c.InterfaceName)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return err
 	}
+	addr, err := netlink.ParseAddr(c.InterfaceAddress)
+	if err != nil {
+		return err
+	}
+
+	err = netlink.LinkSetMTU(link, c.InterfaceMTU)
+	if err != nil {
+		return err
+	}
+
+	err = netlink.AddrAdd(link, addr)
+	if err != nil {
+		return err
+	}
+
+	err = netlink.LinkSetUp(link)
+	if err != nil {
+		return err
+	}
+	return nil
 }

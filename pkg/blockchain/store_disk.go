@@ -1,7 +1,4 @@
-//go:build !server
-// +build !server
-
-package main
+package blockchain
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -24,42 +21,48 @@ package main
 // THE SOFTWARE.
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
+	"strconv"
 
-	"github.com/urfave/cli"
-
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
+	"github.com/peterbourgon/diskv"
 )
 
-func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
-		},
+type DiskStore struct {
+	chain *diskv.Diskv
+}
 
-		Action: cmd.Main(),
-	}
+func NewDiskStore(d *diskv.Diskv) *DiskStore {
+	return &DiskStore{chain: d}
+}
 
-	err := app.Run(os.Args)
+func (m *DiskStore) Add(b Block) {
+	bb, _ := json.Marshal(b)
+	m.chain.Write(fmt.Sprint(b.Index), bb)
+	m.chain.Write("index", []byte(fmt.Sprint(b.Index)))
+
+}
+
+func (m *DiskStore) Len() int {
+	count, err := m.chain.Read("index")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return 0
 	}
+	c, _ := strconv.Atoi(string(count))
+	return c
+
+}
+
+func (m *DiskStore) Last() Block {
+	b := &Block{}
+
+	count, err := m.chain.Read("index")
+	if err != nil {
+		return *b
+	}
+
+	dat, _ := m.chain.Read(string(count))
+	json.Unmarshal(dat, b)
+
+	return *b
 }

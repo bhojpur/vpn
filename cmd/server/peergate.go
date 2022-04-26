@@ -1,7 +1,4 @@
-//go:build !server
-// +build !server
-
-package main
+package cmd
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -25,41 +22,40 @@ package main
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/bhojpur/vpn/pkg/trustzone/authprovider/ecdsa"
 	"github.com/urfave/cli"
-
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
 )
 
-func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
+func Peergate() cli.Command {
+	return cli.Command{
+		Name:        "peergater",
+		Usage:       "peergater ecdsa-genkey",
+		Description: `Peergater auth utilities`,
+		Subcommands: cli.Commands{
+			{
+				Name: "ecdsa-genkey",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name: "privkey",
+					},
+					&cli.BoolFlag{
+						Name: "pubkey",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					priv, pub, err := ecdsa.GenerateKeys()
+					if !c.Bool("privkey") && !c.Bool("pubkey") {
+						fmt.Printf("Private key: %s\n", string(priv))
+						fmt.Printf("Public key: %s\n", string(pub))
+					} else if c.Bool("privkey") {
+						fmt.Printf(string(priv))
+					} else if c.Bool("pubkey") {
+						fmt.Printf(string(pub))
+					}
+					return err
+				},
+			},
 		},
-
-		Action: cmd.Main(),
-	}
-
-	err := app.Run(os.Args)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
 	}
 }

@@ -1,7 +1,4 @@
-//go:build !server
-// +build !server
-
-package main
+package crypto_test
 
 // Copyright (c) 2018 Bhojpur Consulting Private Limited, India. All rights reserved.
 
@@ -24,42 +21,41 @@ package main
 // THE SOFTWARE.
 
 import (
-	"fmt"
-	"os"
+	. "github.com/bhojpur/vpn/pkg/utils"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 
-	"github.com/urfave/cli"
-
-	cmd "github.com/bhojpur/vpn/cmd/server"
-	internal "github.com/bhojpur/vpn/pkg/version"
+	. "github.com/bhojpur/vpn/pkg/crypto"
 )
 
-func main() {
-	app := &cli.App{
-		Name:        "vpnsvr",
-		Version:     internal.Version,
-		Author:      "Bhojpur Consulting Private Limited, India",
-		Usage:       "vpnsvr --config /etc/bhojpur/vpn/config.yaml",
-		Description: "Bhojpur VPN uses libp2p to build an immutable trusted blockchain addressable p2p network",
-		Copyright:   cmd.Copyright,
-		Flags:       cmd.MainFlags(),
-		Commands: []cli.Command{
-			cmd.Start(),
-			cmd.API(),
-			cmd.ServiceAdd(),
-			cmd.ServiceConnect(),
-			cmd.FileReceive(),
-			cmd.Proxy(),
-			cmd.FileSend(),
-			cmd.DNS(),
-			cmd.Peergate(),
-		},
+var _ = Describe("Crypto utilities", func() {
+	Context("AES", func() {
+		It("Encode/decode", func() {
+			key := RandStringRunes(32)
+			message := "foo"
+			k := [32]byte{}
+			copy([]byte(key)[:], k[:32])
 
-		Action: cmd.Main(),
-	}
+			encoded, err := AESEncrypt(message, &k)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(encoded).ToNot(Equal(key))
+			Expect(len(encoded)).To(Equal(62))
 
-	err := app.Run(os.Args)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-}
+			// Encode again
+			encoded2, err := AESEncrypt(message, &k)
+			Expect(err).ToNot(HaveOccurred())
+
+			// should differ
+			Expect(encoded2).ToNot(Equal(encoded))
+
+			// Decrypt and check
+			decoded, err := AESDecrypt(encoded, &k)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(decoded).To(Equal(message))
+
+			decoded, err = AESDecrypt(encoded2, &k)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(decoded).To(Equal(message))
+		})
+	})
+})
