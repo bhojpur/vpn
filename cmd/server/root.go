@@ -159,7 +159,7 @@ func MainFlags() []cli.Flag {
 		&cli.StringFlag{
 			Name:   "interface",
 			Usage:  "Interface name",
-			Value:  "bvpn0",
+			Value:  "bhojpurvpn0",
 			EnvVar: "IFACE",
 		}}, CommonFlags...)
 }

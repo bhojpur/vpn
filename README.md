@@ -25,7 +25,7 @@ tunnels traffic into the P2P network.
 Download the precompiled static release in the [releases page](https://github.com/bhojpur/vpn/releases).
 You can either install it in your system or just run it.
 
-## Sinple Usage
+## Simple Usage
 
 The Bhojpur VPN works by generating tokens (or, a configuration file) that can be shared
 between different machines, hosts, or peers to access to a decentralized secured network
